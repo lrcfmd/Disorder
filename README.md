@@ -1,6 +1,6 @@
 # Disorder: extraction and analysis of distribution of structural disorder in crystalline materials reported in the ICSD
 
-![paper-idea](Disorder/paper-idea.png)
+![paper-idea](paper-idea.png)
 
 To use the code:
 
