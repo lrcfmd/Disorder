@@ -1,4 +1,4 @@
-# Disorder: Extraction and Analysis of distribution of structural disorder in crystalline materials reported in the ICSD
+# Disorder: extraction and analysis of distribution of structural disorder in crystalline materials reported in the ICSD
 
 To use the code:
 
