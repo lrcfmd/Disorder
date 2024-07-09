@@ -65,22 +65,23 @@ positions=file.positions(orbits, symmetry_operations, pystruct=False)
 
 ```
 
-(2) The class allowing to classify all orbits according to their class of disorder in disorder.py: **Disorder**. Classification outputs the dataframe describing orbits with their disorder labales as 'orbit_disorder' column.
+**disorder.disorder.Disorder**(file, radius_file='data/all_radii.csv'): Disorder class aims to assign disorder labels to each orbit in the structure spacified by the input CIF
 
 ```
-from disorder import Disorder
+from disorder.disorder import Disorder
 
-disorder=Disorder(CIF_file, radius_file='data/all_radii.csv', cutoff=0.5, occ_tol=1.05, merge_tol=0.005, pymatgen_dist_matrix=False, dist_tol=1e-3)
+disorder=Disorder(CIF_file, radius_file='data/all_radii.csv')
 # making classification
 output = disorder.classify()
 ```
-(3) The class allowing to calculate entropy in disorder.py: **Entropy**. Input is 'orbits' dataframe.
-```
-from disorder import Entropy
 
-entropy=Entropy(orbits)
+**disorder.disorder.Entropy**(file, radius_file='data/all_radii.csv'): class to calculate mixing and configurational entropy from the input CIF
+
+```
+from disorder.entropy import Entropy
+
+entropy=Entropy(CIF_file, radius_file='data/all_radii.csv')
 mixing_entropy=entropy.mixing_entropy()
 configurational_entropy=entropy.configurational_entropy()
 ```
-(4) Pyhton Notebooks used to extract data from CIFs and analyse extracted information.
 
