@@ -38,27 +38,30 @@ conda env create -f env.yml
       </li>
 </ul>
 
+### Tools
 
-
-(1) The reader of crystallographic structures from CIFs: **Read_CIF** (CIFReader.py). The main difference of this tool compared to analogious tool from pymatgen and ASE is that it correctly labels crystallographic orbits occupied by the same element. For example, in Hg2 Na2 Se6 Sn2 (ICSD col code 013796) there are two orbits occupied by Se: ocupies two orbits 16l, and 8h. Atoms on those two orbits will be assigned different orbit labels by Read_CIF in contrast to pymatgen and ASE readers. 
+**disorder.cifreader.Read_CIF**(file: str, occ_tol: float = 1.05): the reader of crystallographic structures from CIFs. The main difference of this tool compared to analogious tool from pymatgen and ASE is that it distinguishes ordered orbits occupied by the same element as different orbits (it makes sence as different orbits represent geometrically different sets of points). For example, in Hg2 Na2 Se6 Sn2 (ICSD col code 013796) there are two orbits occupied by Se: ocupies two orbits 16l, and 8h. Atoms on those two orbits will be assigned different orbit labels by Read_CIF in contrast to pymatgen and ASE readers. 
 
 ```
-from CIFReader import Read_CIF
+from disorder.cifreader import Read_CIF
 
 file=Read_CIF(file)
 
-formula=file.read_formula()
-ID=file.read_id()
-Z=file.z()
-cell=file.cell()
-space_group=file.space_group()
+formula=file.read_formula
+ID=file.read_id
+Z=file.z
+cell=file.cell
+space_group=file.space_group
+
+# Reading all symmetry operations from CIF, output is a list
 symmetry_operations=file.symmetry()
 
 # Reading all orbit infromation, output is a dataframe
 orbits=file.orbits()
 
-# Generating positions for all atoms, with proper orbit labels. Output is whether dataframe, or dataframe and pymatgen Structure object
-positions=file.positions(orbits,symmetry_operations,pystruct=False,merge_sites=False,merge_tol=1e-2,r=3,dist_tol=1e-2)
+# Generating positions for all atoms, with proper orbit labels.
+# Output is whether dataframe, or dataframe and pymatgen Structure object
+positions=file.positions(orbits, symmetry_operations, pystruct=False)
 
 ```
 
