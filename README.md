@@ -1,5 +1,14 @@
 # Disorder: Extraction and Analysis of distribution of disorder in crystalline materials reported in the ICSD
 
+To use the code:
+
+(1) clone repositiory using your favourite method
+
+(2) create anacoda environment with all nessecary packages:
+```
+conda env create -f env.yml
+```
+
 This repository contains:
 
 (1) The reader of crystallographic structures from CIFs: **Read_CIF** (CIFReader.py). The main difference of this tool compared to analogious tool from pymatgen and ASE is that it correctly labels crystallographic orbits occupied by the same element. For example, in Hg2 Na2 Se6 Sn2 (ICSD col code 013796) there are two orbits occupied by Se: ocupies two orbits 16l, and 8h. Atoms on those two orbits will be assigned different orbit labels by Read_CIF in contrast to pymatgen and ASE readers. 
