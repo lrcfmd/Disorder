@@ -214,8 +214,8 @@ class Read_CIF:
             return orbits
         
 
-    def positions(self, orbits: Union[pd.DataFrame, None],symops: list,pystruct: bool=False,
-                  merge_sites: bool=False, merge_tol: float=1e-2,r: int=3,dist_tol: float=1e-2):
+    def positions(self, orbits: Union[pd.DataFrame, None], symops: list, pystruct: bool=False,
+                  merge_sites: bool=False, merge_tol: float=1e-2, r: int=3, dist_tol: float=1e-2):
         """
         Function creating positions from orbits and symmetry operations
         Input: orbits - pandas dataframe describing orbits, reproduces the information in CIF 
@@ -224,6 +224,12 @@ class Read_CIF:
                'atom_site_B_iso_or_equiv', 'atom_site_occupancy'])
                output of self.orbit(). 
                symops - list[str] list of symmetry operations from CIF
+               pystruct - bool, whether output in addition to positions dataframe, pymatgen structure object
+               merge_sites - bool, whether merge closely located sites
+               merge_tol - float, distance tolerance in cartesian space (in angstroms) for merging sites if merge_sites=True
+               r - int, number of digits to retain when dealing with coordinates
+               dist_tol - float, distance tolerance in cartesian space (in angstroms) to say whether two points are the same.
+
         """
         
         def pbc(n):
