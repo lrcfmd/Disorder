@@ -14,6 +14,24 @@ conda env create -f env.yml
 ```
 
 ## This repository contains:
+<ul>
+      <li>Tools:
+      <ul>
+        <li> disorder.cifreader.Read_CIF </li>
+        <li> disorder.disorder.Disorder </li>
+        <li> disorder.entropy.Entropy </li>
+      </ul>
+      </li>
+      <li>Jupyter notebooks:
+      <ul>
+        <li> disorder_examples.ipynb </li>
+        <li> data_extraction.ipynb </li>
+        <li> data_extraction_H_compounds.ipynb </li>
+        <li> analysis.ipynb </li>
+      </ul>
+</ul>
+
+
 
 (1) The reader of crystallographic structures from CIFs: **Read_CIF** (CIFReader.py). The main difference of this tool compared to analogious tool from pymatgen and ASE is that it correctly labels crystallographic orbits occupied by the same element. For example, in Hg2 Na2 Se6 Sn2 (ICSD col code 013796) there are two orbits occupied by Se: ocupies two orbits 16l, and 8h. Atoms on those two orbits will be assigned different orbit labels by Read_CIF in contrast to pymatgen and ASE readers. 
 
