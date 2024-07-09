@@ -1,4 +1,4 @@
-# Disorder: Extraction and Analysis of distribution of disorder in crystalline materials reported in the ICSD
+# Disorder: Extraction and Analysis of distribution of structural disorder in crystalline materials reported in the ICSD
 
 To use the code:
 
@@ -16,7 +16,7 @@ conda env create -f env.yml
 ```
 from CIFReader import Read_CIF
 
-file=Read_CIF(file, occ_tol=1.05)
+file=Read_CIF(file)
 
 formula=file.read_formula()
 ID=file.read_id()
