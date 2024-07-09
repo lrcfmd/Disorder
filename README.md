@@ -29,6 +29,13 @@ conda env create -f env.yml
         <li> data_extraction_H_compounds.ipynb </li>
         <li> analysis.ipynb </li>
       </ul>
+      </li>
+      <li>Data files:
+      <ul>
+        <li> Disorder labels for all compounds [link] </li>
+        <li> Disorder Wyckoff sequences, entropies, fractions of disordered sites for all compounds [link] </li>
+      </ul>
+      </li>
 </ul>
 
 
