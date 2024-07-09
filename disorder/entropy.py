@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.distance import cdist
 from pymatgen.core.composition import Composition
-from disorder.cifreader import Read_CIF
+from disorder.disorder import Disorder
 import networkx as nx
 
 
@@ -10,12 +10,14 @@ class Entropy:
     """
     data is a row of a dataframe with the output from disorder classification
     """
-    def __init__(self,orbits,formula,z):
-        self.data=orbits.to_dict()
-        self.data['formula']=formula
-        self.data['Z']=z
-
+    def __init__(self, file, radius_file='data/all_radii.csv', cutoff=0.5,occ_tol=1.05,merge_tol=0.005,pymatgen_dist_matrix=False,dist_tol=1e-3):
         
+        self.material=Disorder(file,radius_file=radius_file, cutoff=cutoff,occ_tol=occ_tol,merge_tol=merge_tol,\
+                               pymatgen_dist_matrix=pymatgen_dist_matrix,dist_tol=dist_tol)
+        self.data=self.material.classify()
+        self.data['formula']=self.material.material.read_formula
+        self.data['Z']=self.material.material.z
+       
     def mixing_entropy(self):
         calculated_orbits=np.zeros(len(self.data['label']))
         mixing_entropy=0
