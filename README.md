@@ -85,3 +85,9 @@ mixing_entropy=entropy.mixing_entropy()
 configurational_entropy=entropy.configurational_entropy()
 ```
 
+### Jupyter notebooks
+
+**disorder_examples.ipynb** : this notebook demonstrates classification of examples from the paper
+**data_extraction.ipynb**: the notebook contains a script to extract disorder data from the database of CIFs, compounds containing H are discarded
+**data_extraction_H_compounds.ipynb**: the notebook contains a script to extract disorder data from compounds containing H
+**analysis.ipynb**:  script allowing to reproduce graphics from the paper
