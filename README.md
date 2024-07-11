@@ -94,3 +94,19 @@ configurational_entropy=entropy.configurational_entropy()
 **data_extraction_H_compounds.ipynb**: the notebook contains a script to extract disorder data from compounds containing H
 
 **analysis.ipynb**:  script allowing to reproduce graphics from the paper
+
+## Acknowledgements
+
+Authors thank the Leverhulme Trust for funding through the Leverhulme Research Centre for Functional Materials Design (RC-2015-036).
+
+## Citation
+
+```
+@article{patyukova2024disorder,
+  title={Classification and statistical analysis of structural disorder in crystalline materials},
+  author={Patyukova, Elena and Collins, Chris M. and Dyer, Matthew S. and Antypov, Dmytro and Claridge, John B. and Rosseinsky, Matthew J.},
+  year={2024}
+}
+```
+
+
