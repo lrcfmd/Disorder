@@ -22,10 +22,10 @@ conda env create -f env.yml
         <li> disorder.entropy.Entropy </li>
       </ul>
       </li>
-      <li>Jupyter notebooks:
+      <li>Jupyter notebooks/ python scripts:
       <ul>
         <li> disorder_examples.ipynb </li>
-        <li> data_extraction.ipynb </li>
+        <li> data_extraction.py </li>
         <li> data_extraction_H_compounds.ipynb </li>
         <li> analysis.ipynb </li>
       </ul>
@@ -89,7 +89,7 @@ configurational_entropy=entropy.calculate_entropy(entropy_type='configurational'
 
 **disorder_examples.ipynb** : this notebook demonstrates classification of examples from the paper
 
-**data_extraction.ipynb**: the notebook contains a script to extract disorder data from the database of CIFs, compounds containing H are discarded
+**data_extraction.py**: the notebook contains a script to extract disorder data from the database of CIFs, compounds containing H are discarded
 
 **data_extraction_H_compounds.ipynb**: the notebook contains a script to extract disorder data from compounds containing H
 
