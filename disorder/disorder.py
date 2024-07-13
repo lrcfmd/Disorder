@@ -18,7 +18,9 @@ class Disorder:
     (4) pymatgen_dist_matrix specifies which distance matrix to use. If True, than Structure.distance_matrix
     from pymatgen is used. Otherwise, the hand-written one is used.
     """
-    def __init__(self, file, radius_file='data/all_radii.csv', cutoff=0.5,occ_tol=1.05,merge_tol=0.005,pymatgen_dist_matrix=False,dist_tol=1e-3):
+    def __init__(self, file: str, radius_file: str='data/all_radii.csv', cutoff: float=0.5,\
+                 occ_tol: float=1.05, merge_tol: float=0.01, pymatgen_dist_matrix: bool=False,\
+                 dist_tol: float=0.01):
         
         self.radius=pd.read_csv(radius_file,dtype={
             'symbol': str,
@@ -38,6 +40,8 @@ class Disorder:
         self.pymatgen_dist_matrix=pymatgen_dist_matrix
         self.errors=[]
         self.list_el=list(set(self.radius['symbol'].values))
+        self.merge_tol=merge_tol
+        self.dist_tol=dist_tol
     
         self.material=Read_CIF(file=file)
         
@@ -45,8 +49,8 @@ class Disorder:
             o=self.material.orbits()
             s=self.material.symmetry()
             
-            self.positions,self.struct = self.material.positions(o,s,pystruct=True,
-                                                             merge_sites=True,merge_tol=merge_tol,dist_tol=dist_tol)
+            self.positions,self.struct = self.material.positions(o,s,pystruct=True,\
+                                         merge_sites=True,merge_tol=merge_tol,dist_tol=dist_tol)
             
             self.errors=self.material.return_errors()
         except: 
@@ -100,42 +104,42 @@ class Disorder:
         return (lattice,positions,num_el)
   
     def determine_intersections(self):
-        """ This function determines the intersections between sites.
-            Returns a list of list of sites which intersect with a given one"""
-        
-        distance_template=np.zeros((len(self.positions),len(self.positions)))
-        site_element_radiuses=self.element_radiuses()
+        """This function determines the intersections between sites.
+        Returns a list of list of sites which intersect with a given one.
+        """
+        num_positions = len(self.positions)
+        site_element_radiuses = self.element_radiuses()
 
+        # Create the distance template matrix
+        distance_template=np.zeros((num_positions,num_positions))
         for i in range(len(self.positions)):
             for j in range(len(self.positions)):
                 if(i!=j):
                     distance_template[i,j]=max([1,(site_element_radiuses[i]+site_element_radiuses[j])*self.cutoff])
 
-        if(self.pymatgen_dist_matrix==True):
-            dist=self.struct.distance_matrix
-        else:
-            dist=self.distance_matrix()
-            
-        a=dist-distance_template
-        close=[]
-        for i in range(len(self.positions)):
-            cl=[]
-            for j in range(len(self.positions)):
-                if(a[i,j]<0):
-                    cl.append(j)
-            # we assume that for 'H1+' ad 'D1+' positional disorder is not possible        
-            # for sp in Composition(self.positions.iloc[i]['atom_site_type_symbol']).elements:
-            #     if(str(sp.element)=='H' or str(sp.element)=='D'):
-            #         if(sp.oxi_state==1):
-            #             cl=[]
-            close.append(np.array(cl,dtype=int))
-        # 1. Note that self.struct and self.positions created by IStructure_from_CIF() are ordered in the same way
-        # 2. Write a case when IStructure_from_CIF() is not working, but self.struct is created by pymatgen from CIF
-        # In this case self.positions should be created. Correct labels of orbits should be collected from CIF
-        # or with the self of spglib.get_symmetry()
-        self.positions['intersecting_sites']=close
-        
+        # Determine the distance matrix
+        dist = self.struct.distance_matrix if self.pymatgen_dist_matrix else self.distance_matrix()
+
+        # Calculate the difference matrix
+        diff_matrix = dist - distance_template
+
+        # Determine close sites using list comprehensions
+        close_sites = [
+            [j for j in range(num_positions) if diff_matrix[i, j] < 0]
+            for i in range(num_positions)
+        ]
+
+        # Exclude positional disorder for 'H1+' and 'D1+' if needed
+        # Uncomment if needed
+        # for i, cl in enumerate(close_sites):
+        #     for sp in Composition(self.positions.iloc[i]['atom_site_type_symbol']).elements:
+        #         if str(sp.element) in ['H', 'D'] and sp.oxi_state == 1:
+        #             close_sites[i] = []
+
+        self.positions['intersecting_sites'] = close_sites
+
         return self.positions
+
     
     def determine_orbits(self):
         """ This function determines the equivalent positions (orbits) from
@@ -155,188 +159,124 @@ class Disorder:
     
     def determine_intersecting_orbits(self):
         """ 
-        This function determines internal and external intersection 
-        for functions based on the lists of intersection between sites 
+        This function determines internal and external intersections 
+        for orbits based on the lists of intersections between sites 
         """
 
-        self.orbits=self.determine_orbits()
-        
-        intersect_index=[]
-        internal_intersection=[]
-        external_intersection=[]
-        intersect_orbits=[]
-        vacancy_number=[]
-        intersect_orbit_connected=[]
-        intersect_orbit_connected_mult=[]
-        intersect_orbit_connected_occ=[]
-        
-        # fast way to do it, if there is only ordered and substitutionally disordered orbits
-        VPorbits=False
-        for i,orb in enumerate(self.orbits['label'].values):
-            if(len(self.orbits.iloc[i]['species'])==1):
-                if(self.orbits.iloc[i]['occupancy']<1.0):
-                    VPorbits=True
-            elif(len(self.orbits.iloc[i]['species'])>1):
-                if(self.orbits.iloc[i]['occupancy']<0.989):
-                    VPorbits=True
+        self.orbits = self.determine_orbits()
 
-        if(VPorbits==False):
-            for i,orb in enumerate(self.orbits['label'].values):
+        intersect_index = []
+        internal_intersection = []
+        external_intersection = []
+        intersect_orbits = []
+        vacancy_number = []
+        intersect_orbit_connected = []
+        intersect_orbit_connected_mult = []
+        intersect_orbit_connected_occ = []
+
+        VPorbits = any(
+            (len(orbit.species) == 1 and orbit.occupancy < 1.0) or 
+            (len(orbit.species) > 1 and orbit.occupancy < 0.989)
+            for orbit in self.orbits.itertuples()
+        )
+
+        if not VPorbits:
+            for orbit in self.orbits.itertuples():
                 internal_intersection.append(False)
                 external_intersection.append(False)
                 intersect_index.append([1])
                 intersect_orbits.append([])
-                vacancy_number.append(self.vacancy_number(orb))
-                intersect_orbit_connected.append([orb])
-                intersect_orbit_connected_mult.append(self.orbits.iloc[i]['multiplicity'])
-                intersect_orbit_connected_occ.append(self.orbits.iloc[i]['occupancy'])
+                vacancy_number.append(self.vacancy_number(orbit.label))
+                intersect_orbit_connected.append([orbit.label])
+                intersect_orbit_connected_mult.append(orbit.multiplicity)
+                intersect_orbit_connected_occ.append(orbit.occupancy)
 
-            self.orbits['internal_intersection']=internal_intersection
-            self.orbits['internal_intersect_index']=intersect_index
-            self.orbits['vacancy_number']=vacancy_number
-            self.orbits['external_intersection']=external_intersection
-            self.orbits['intersecting_orbits']=intersect_orbits
-            self.orbits['intersect_orbit_connected']=intersect_orbit_connected
-            self.orbits['intersect_orbit_connected_mult']=intersect_orbit_connected_mult
-            self.orbits['intersect_orbit_connected_occ']=intersect_orbit_connected_occ
+            self.orbits['internal_intersection'] = internal_intersection
+            self.orbits['internal_intersect_index'] = intersect_index
+            self.orbits['vacancy_number'] = vacancy_number
+            self.orbits['external_intersection'] = external_intersection
+            self.orbits['intersecting_orbits'] = intersect_orbits
+            self.orbits['intersect_orbit_connected'] = intersect_orbit_connected
+            self.orbits['intersect_orbit_connected_mult'] = intersect_orbit_connected_mult
+            self.orbits['intersect_orbit_connected_occ'] = intersect_orbit_connected_occ
 
         else:
-            self.positions=self.determine_intersections()
-        
-            for orb in self.orbits['label'].values:
-                db=self.positions.loc[self.positions['atom_site_label']==orb]
-                ib=[]
-                switch=0
-                for j in db['intersecting_sites'].values:
-                    for i in j:
-                    # so if there are intersection and (1) there is intersection with the site form the same orbit
-                    # then internal_intersection = True
-                    # (2) there is intersection with site from another orbit, the name of that orbit is added to 
-                    # the list of intersecting orbits 
-                        if(i not in db.index.values):
-                            ib.append(self.positions.iloc[i]['atom_site_label'])
-                        elif(i in db.index.values):
-                            switch=1
-                if(switch==0 and len(ib)==0):
-                # no internal or external intersection
-                    internal_intersection.append(False)
-                    external_intersection.append(False)
-                    intersect_index.append([1])   # all orbits with no internal intersection have self-intersection
-                                                # index 1
-                elif(switch==0 and len(ib)!=0):
-                # only external intersection
-                    internal_intersection.append(False)
-                    external_intersection.append(True)
-                    intersect_index.append([1])   # all orbits with no internal intersection have self-intersection
-                                                # index 1
-                elif(switch!=0 and len(ib)==0):
-                # only internal intersection
-                    internal_intersection.append(True)
-                    external_intersection.append(False)
-                    # index = indexes of atoms on the orb which has internal intersection
-                    index=self.positions.loc[self.positions['atom_site_label']==orb].index.values
-                    # the list of lists of intersecting sites on orb
-                    intersections=self.positions.loc[self.positions['atom_site_label']==orb]['intersecting_sites'].values
-                    # building a praph of nodes
-                    G = nx.Graph()
-                    for ie in range(len(index)):
-                        G.add_node(index[ie])
-                        for je in intersections[ie]:
-                            G.add_node(je)
-                            G.add_edge(index[ie],je)
-                    inter_sizes=list(set([len(i) for i in nx.connected_components(G)])) 
-                    intersect_index.append(inter_sizes) # sometimes orbits with the internal intersection sites which form 
-                                                        # groups of different size, that is why it is a list here
-                else:
-                # internal and external intersection
-                    # in this case the list of itersecting orbits contains the orbit itself
-                    internal_intersection.append(True)
-                    external_intersection.append(True)
-                    index=self.positions.loc[self.positions['atom_site_label']==orb].index.values
-                    intersections=self.positions.loc[self.positions['atom_site_label']==orb]['intersecting_sites'].values
-                    G = nx.Graph()
-                    for ie in range(len(index)):
-                        G.add_node(index[ie])
-                        for je in intersections[ie]:
-                            if(je in index): # because in case of external intersection there will 
-                                            # be indexes belonging to different orbits
-                                G.add_node(je)
-                                G.add_edge(index[ie],je)
-                    inter_sizes=list(set([len(i) for i in nx.connected_components(G)]))
-                    intersect_index.append(inter_sizes)
-                    
-                ib=list(set(ib))
-                intersect_orbits.append(ib)
-                vacancy_number.append(self.vacancy_number(orb))
-            
-            
-            self.orbits['internal_intersection']=internal_intersection
-            self.orbits['internal_intersect_index']=intersect_index
-            self.orbits['vacancy_number']=vacancy_number
-            self.orbits['external_intersection']=external_intersection
-            self.orbits['intersecting_orbits']=intersect_orbits
-            
-            # to refine the intersecting orbit determination we constract a graph where orbits are nodes 
-            # and there is an edge between any two intersecting orbits. The connected components within this graph
-            # show the list of 'effective' orbits in the compound.
+            self.positions = self.determine_intersections()
 
-            G=nx.Graph()
-            for i,orb in enumerate(self.orbits['label'].values):
-                G.add_node(orb)
-                for je in intersect_orbits[i]:
-                    G.add_edge(orb,je)
-            connected_comp=[]
-            for i in nx.connected_components(G):
-                connected_comp.append(list(i)) # flag 1
+            for orbit in self.orbits.itertuples():
+                db = self.positions[self.positions['atom_site_label'] == orbit.label]
+                ib = set()
+                internal = False
 
-            for orb in self.orbits['label'].values:
-                for jj in connected_comp:
-                    if(orb in jj):
-                        intersect_orbit_connected.append(jj)
-            
-            self.orbits['intersect_orbit_connected']=intersect_orbit_connected
-            
-            # calculating multiplicities and total_occupancies of intersect_orbit_connected
-            
+                for intersecting_sites in db['intersecting_sites']:
+                    for site in intersecting_sites:
+                        if site not in db.index:
+                            ib.add(self.positions.at[site, 'atom_site_label'])
+                        else:
+                            internal = True
 
-            for ind,s_orb in enumerate(intersect_orbit_connected):
-                s_orb=list(s_orb)
-                index=self.positions.loc[self.positions['atom_site_label']==s_orb[0]].index.values
-                intersections=self.positions.loc[self.positions['atom_site_label']==s_orb[0]]['intersecting_sites'].values
-                for ind in range(1,len(s_orb)):
-                    index=np.append(index,self.positions.loc[self.positions['atom_site_label']==s_orb[ind]].index.values)
-                    intersections=np.append(intersections,self.positions.loc[self.positions['atom_site_label']==s_orb[ind]]['intersecting_sites'].values)
+                internal_intersection.append(internal)
+                external_intersection.append(bool(ib))
+                intersect_index.append([1] if not internal else 
+                                    [len(i) for i in nx.connected_components(
+                                        nx.from_edgelist(
+                                            [(u, v) for u in db.index for v in db.at[u, 'intersecting_sites'] if v in db.index]
+                                        )
+                                    )])
 
-                G = nx.Graph()
-                for ie in range(len(index)):
-                    G.add_node(index[ie])
-                    for je in intersections[ie]:
-                        G.add_node(je)
-                        G.add_edge(index[ie],je)
-                cc_comp_mult=[]
-                cc_comp_occ=[]
-                for i in nx.connected_components(G):
-                    cc_comp_mult.append(len(i))
-                    m=0
-                    for j in i:
-                        m+=self.positions.iloc[j]['atom_site_occupancy']
-                    cc_comp_occ.append(round(m,2))
+                intersect_orbits.append(list(ib))
+                vacancy_number.append(self.vacancy_number(orbit.label))
+
+            self.orbits['internal_intersection'] = internal_intersection
+            self.orbits['internal_intersect_index'] = intersect_index
+            self.orbits['vacancy_number'] = vacancy_number
+            self.orbits['external_intersection'] = external_intersection
+            self.orbits['intersecting_orbits'] = intersect_orbits
+
+            orbit_graph = nx.Graph()
+            for orbit, ib in zip(self.orbits['label'], intersect_orbits):
+                orbit_graph.add_node(orbit)
+                for intersecting_orbit in ib:
+                    orbit_graph.add_edge(orbit, intersecting_orbit)
+
+            connected_components = [list(comp) for comp in nx.connected_components(orbit_graph)]
+            for orbit in self.orbits['label']:
+                for comp in connected_components:
+                    if orbit in comp:
+                        intersect_orbit_connected.append(comp)
+
+            self.orbits['intersect_orbit_connected'] = intersect_orbit_connected
+
+            for s_orb_group in intersect_orbit_connected:
+                index = np.concatenate([self.positions[self.positions['atom_site_label'] == orb].index for orb in s_orb_group])
+                intersections = np.concatenate([self.positions[self.positions['atom_site_label'] == orb]['intersecting_sites'] for orb in s_orb_group])
+
+                graph = nx.Graph()
+                for ind, intersecting_sites in zip(index, intersections):
+                    graph.add_node(ind)
+                    for site in intersecting_sites:
+                        graph.add_edge(ind, site)
+
+                cc_comp_mult = [len(comp) for comp in nx.connected_components(graph)]
+                cc_comp_occ = [round(sum(self.positions.at[node, 'atom_site_occupancy'] for node in comp), 3) for comp in nx.connected_components(graph)]
+                
                 intersect_orbit_connected_mult.append(len(cc_comp_mult))
-                if(len(set(cc_comp_occ))==1):
-                    if(cc_comp_occ[0]>1 and cc_comp_occ[0]<self.occ_tol):
-                        cc_comp_occ[0]=1.0
-                    intersect_orbit_connected_occ.append(cc_comp_occ[0])
-                    if(cc_comp_occ[0] > self.occ_tol):
+
+                if len(set(cc_comp_occ)) == 1:
+                    occ = cc_comp_occ[0]
+                    if occ > 1 and occ < self.occ_tol:
+                        occ = 1.0
+                    intersect_orbit_connected_occ.append(occ)
+                    if occ > self.occ_tol:
                         self.errors.append('intersect_orbit_connected_occ > occ_tol')
                 else:
                     intersect_orbit_connected_occ.append(list(set(cc_comp_occ)))
                     self.errors.append('no single value for intersect_orbit_connected_occ')
-            
-            self.orbits['intersect_orbit_connected_mult']=intersect_orbit_connected_mult
-            self.orbits['intersect_orbit_connected_occ']=intersect_orbit_connected_occ
-        
+
+            self.orbits['intersect_orbit_connected_mult'] = intersect_orbit_connected_mult
+            self.orbits['intersect_orbit_connected_occ'] = intersect_orbit_connected_occ
+
         return self.orbits, VPorbits
-        
     
     def element_radiuses(self):
         """Crystal radiuses are given only for integer oxidation numbers, but
@@ -372,51 +312,33 @@ class Disorder:
         self.positions['radiuses']=element_radiuses
         return element_radiuses
     
-    def distance(self,x1,x2,lattice,space_num):
-        if(space_num < 16 or (space_num > 142 and space_num < 195)):
-            x1c=np.dot(x1,lattice)
-            x2c=np.dot(x2,lattice)
-            x1images=np.zeros((27,3))
-            x2images=np.zeros((27,3))
+    def distance(self, x1, x2, lattice, space_num):
+        if space_num < 16 or (142 < space_num < 195):
+            x1c = np.dot(x1, lattice)
+            x2c = np.dot(x2, lattice)
+            lattice_vectors = [0, 1, -1]
+            
+            # Generate image shifts
+            shifts = np.array(np.meshgrid(*[lattice_vectors]*3)).T.reshape(-1, 3)
+            x1_images = x1c + np.dot(shifts, lattice)
+            x2_images = x2c + np.dot(shifts, lattice)
 
-            for i in range(3):
-                vec=np.array([[0, lattice[0][i], -lattice[0][i], lattice[1][i], \
-                               -lattice[1][i],lattice[2][i],-lattice[2][i],\
-                              lattice[0][i]+lattice[1][i],-lattice[0][i]-lattice[1][i],\
-                              lattice[0][i]-lattice[1][i],-lattice[0][i]+lattice[1][i],\
-                              lattice[2][i]+lattice[1][i],-lattice[2][i]-lattice[1][i],\
-                              lattice[2][i]-lattice[1][i],-lattice[2][i]+lattice[1][i],\
-                              lattice[0][i]+lattice[2][i],-lattice[0][i]-lattice[2][i],\
-                              lattice[0][i]-lattice[2][i],-lattice[0][i]+lattice[2][i],\
-                              lattice[0][i]+lattice[1][i]+lattice[2][i], \
-                              -lattice[0][i]-lattice[1][i]-lattice[2][i],\
-                              -lattice[0][i]+lattice[1][i]+lattice[2][i],\
-                               lattice[0][i]-lattice[1][i]+lattice[2][i],\
-                               lattice[0][i]+lattice[1][i]-lattice[2][i],\
-                              -lattice[0][i]-lattice[1][i]+lattice[2][i],\
-                               -lattice[0][i]+lattice[1][i]-lattice[2][i],\
-                               lattice[0][i]-lattice[1][i]-lattice[2][i]]])
-
-                x1images[:,i]=x1c[i]*np.ones(27)+vec
-                x2images[:,i]=x2c[i]*np.ones(27)+vec
-
-            d=cdist(x1images,x2images,'euclidean')
-            dist=np.min(d)
-
+            d = cdist(x1_images, x2_images, 'euclidean')
+            dist = np.min(d)
         else:
-            d=np.zeros(3)
+            d = np.zeros(3)
             for i in range(3):
-                if(x1[i]-x2[i]>0.5):
-                    d[i]=(x1[i]-x2[i]-1.0)
-                elif(x1[i]-x2[i]<-0.5):
-                    d[i]=(x1[i]-x2[i]+1.0)
+                diff = x1[i] - x2[i]
+                if diff > 0.5:
+                    d[i] = diff - 1.0
+                elif diff < -0.5:
+                    d[i] = diff + 1.0
                 else:
-                    d[i]=x1[i]-x2[i]
-            dc=np.dot(d,lattice)
-            dist=np.sqrt(dc[0]**2+dc[1]**2+dc[2]**2)
+                    d[i] = diff
+            dc = np.dot(d, lattice)
+            dist = np.sqrt(np.sum(dc ** 2))
+        return dist
 
-        return dist 
-    
     def distance_matrix(self):
         space_num=self.material.space_group
         lattice=self.struct.lattice.as_dict()['matrix']
@@ -440,70 +362,56 @@ class Disorder:
         return dist_matrix
     
     def classify(self):
-        self.orbits, _=self.determine_intersecting_orbits()
-        orbit_disorder=[]
-        for i,orb in enumerate(self.orbits['label'].values):
-            # orbits without positional disorder component
-            if(self.orbits.iloc[i]['external_intersection']==False and self.orbits.iloc[i]['internal_intersection']==False):
-                if(len(self.orbits.iloc[i]['species'].keys())==1 and self.orbits.iloc[i]['occupancy']==1.0):
-                    orbit_disorder.append('O') #1
-                elif(len(self.orbits.iloc[i]['species'].keys())==1 and self.orbits.iloc[i]['occupancy']<1.0):
-                    orbit_disorder.append('V') #2
-                elif(self.orbits.iloc[i]['occupancy']>0.989 and len(self.orbits.iloc[i]['species'].keys())>1):
-                    orbit_disorder.append('S') #3
-                elif(self.orbits.iloc[i]['occupancy']<0.989 and len(self.orbits.iloc[i]['species'].keys())>1):
-                    orbit_disorder.append('SV') #4
-            # orbits with positional disorder component: have only internal intersection  
-            elif(self.orbits.iloc[i]['internal_intersection']==True and self.orbits.iloc[i]['external_intersection']==False):
-                if(len(self.orbits.iloc[i]['species'].keys())>1):
-                    if(abs(self.orbits.iloc[i]['vacancy_number']-round(self.orbits.iloc[i]['vacancy_number'],0))<0.011):
-                        orbit_disorder.append('SP') #7
-                    else:
-                        orbit_disorder.append('SVP') #8
+        self.orbits, _ = self.determine_intersecting_orbits()
+        orbit_disorder = []
+        
+        for i, orbit in self.orbits.iterrows():
+            species_count = len(orbit['species'].keys())
+            occupancy = orbit['occupancy']
+            external_intersect = orbit['external_intersection']
+            internal_intersect = orbit['internal_intersection']
+            vacancy_number = orbit['vacancy_number']
+            intersect_orbit_connected = orbit['intersect_orbit_connected']
+            intersect_orbit_connected_occ = orbit['intersect_orbit_connected_occ']
+            
+            def is_approx_integer(value, tolerance=0.011):
+                return abs(value - round(value)) < tolerance
+            
+            if not external_intersect and not internal_intersect:
+                if species_count == 1:
+                    orbit_disorder.append('O' if occupancy == 1.0 else 'V')
+                elif occupancy > 0.989:
+                    orbit_disorder.append('S')
                 else:
-                    if(abs(self.orbits.iloc[i]['vacancy_number']-round(self.orbits.iloc[i]['vacancy_number'],0))<0.005):
-                        orbit_disorder.append('P') #5
-                    else:
-                        orbit_disorder.append('VP') #6
-            # orbits with positional disorder componenet: have external intersection and/no internal intersection             
-            elif(len(self.orbits.iloc[i]['intersect_orbit_connected'])>1):
-                intersect_el=[]
-                for intersect_orb in self.orbits.iloc[i]['intersect_orbit_connected']:
-                    for j,orbj in enumerate(self.orbits['label'].values):
-                        if(orbj==intersect_orb):
-                            for el in self.orbits.iloc[j]['species'].keys():
-                                intersect_el.append(el)
-                intersect_el=set(intersect_el)
-
-                if(self.orbits.iloc[i]['species'].keys()==intersect_el):
-                    if(len(self.orbits.iloc[i]['species'].keys())>1):
-                        if(type(self.orbits.iloc[i]['intersect_orbit_connected_occ'])!=list):
-                            if(abs(self.orbits.iloc[i]['intersect_orbit_connected_occ']-round(self.orbits.iloc[i]['intersect_orbit_connected_occ']))<0.011):
-                                orbit_disorder.append('SP') #11
-                            else:
-                                orbit_disorder.append('SVP') #12
-                        else:
-                            orbit_disorder.append('COM') #13                             
-                           
-                    else:
-                        if(type(self.orbits.iloc[i]['intersect_orbit_connected_occ'])!=list):
-                            if(abs(self.orbits.iloc[i]['intersect_orbit_connected_occ']-round(self.orbits.iloc[i]['intersect_orbit_connected_occ']))<0.011):
-                                orbit_disorder.append('P') #9
-                            else:
-                                orbit_disorder.append('VP') #10
-                        else:
-                            orbit_disorder.append('COM') #13 
+                    orbit_disorder.append('SV')
+            elif internal_intersect and not external_intersect:
+                if species_count > 1:
+                    orbit_disorder.append('SP' if is_approx_integer(vacancy_number) else 'SVP')
                 else:
-                    if(type(self.orbits.iloc[i]['intersect_orbit_connected_occ'])!=list):
-                        if(abs(self.orbits.iloc[i]['intersect_orbit_connected_occ']-round(self.orbits.iloc[i]['intersect_orbit_connected_occ']))<0.011):
-                            orbit_disorder.append('SP') #11
+                    orbit_disorder.append('P' if is_approx_integer(vacancy_number) else 'VP')
+            else:
+                intersect_species = set()
+                for intersect_orb in intersect_orbit_connected:
+                    intersect_species.update(self.orbits.loc[self.orbits['label'] == intersect_orb, 'species'].values[0].keys())
+                
+                if orbit['species'].keys() == intersect_species:
+                    if species_count > 1:
+                        if not isinstance(intersect_orbit_connected_occ, list):
+                            orbit_disorder.append('SP' if is_approx_integer(intersect_orbit_connected_occ) else 'SVP')
                         else:
-                            orbit_disorder.append('SVP') #12
+                            orbit_disorder.append('COM')
                     else:
-                        orbit_disorder.append('COM') #13
-                    
-                          
-        self.orbits['orbit_disorder']=orbit_disorder 
+                        if not isinstance(intersect_orbit_connected_occ, list):
+                            orbit_disorder.append('P' if is_approx_integer(intersect_orbit_connected_occ) else 'VP')
+                        else:
+                            orbit_disorder.append('COM')
+                else:
+                    if not isinstance(intersect_orbit_connected_occ, list):
+                        orbit_disorder.append('SP' if is_approx_integer(intersect_orbit_connected_occ) else 'SVP')
+                    else:
+                        orbit_disorder.append('COM')
+                        
+        self.orbits['orbit_disorder'] = orbit_disorder
         return self.orbits
     
     def print_error(self):
