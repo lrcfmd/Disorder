@@ -81,8 +81,8 @@ output = disorder.classify()
 from disorder.entropy import Entropy
 
 entropy=Entropy(CIF_file, radius_file='data/all_radii.csv')
-mixing_entropy=entropy.mixing_entropy()
-configurational_entropy=entropy.configurational_entropy()
+mixing_entropy=entropy.calculate_entropy(entropy_type='mixing')
+configurational_entropy=entropy.calculate_entropy(entropy_type='configurational')
 ```
 
 ### Jupyter notebooks
