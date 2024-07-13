@@ -4,7 +4,7 @@ import json
 import os
 
 from time import time
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import Pool
 
 from pymatgen.core.composition import Composition
@@ -24,7 +24,7 @@ elem_list=['Ac', 'Ag', 'Al', 'Am', 'As', 'At', 'Au', 'B', 'Ba', 'Be', 'Bi', 'Bk'
 
 
 def process_file(file: str):
-    path='/Users/elenapatyukova/Documents/GitHub/ICSDClient/cifs/'
+    path='path to you folder with CIFs'
     h_switch=0
     form_switch=0
     exc_large=[]
@@ -75,7 +75,7 @@ def process_file(file: str):
     return file, compound, exc_large, errors_large, exc, exc_h, exc_form
 
 if __name__ == '__main__':
-    path='/Users/elenapatyukova/Documents/GitHub/ICSDClient/cifs/'
+    path='path to your folder with CIFs'
     list_of_files=os.listdir(path)
 
     limit_low=0
