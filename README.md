@@ -83,7 +83,9 @@ from disorder.entropy import Entropy
 entropy=Entropy(CIF_file, radius_file='data/all_radii.csv')
 mixing_entropy=entropy.calculate_entropy(entropy_type='mixing')
 configurational_entropy=entropy.calculate_entropy(entropy_type='configurational')
+mc_configurational_entropy=entropy.calculate_entropy(entropy_type='mc_configurational')
 ```
+Formulas used for entropy calculation can be found in the paper. Mixing and configurational entropies are calculates using analytical formulas. MC_configurational is a monte carlo estimation of configurational entropy. All three values differ from each other only if positional disorder is present. 
 
 ### Jupyter notebooks
 
