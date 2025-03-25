@@ -99,16 +99,7 @@ Formulas used for entropy calculation can be found in the paper. Mixing and conf
 
 ## Acknowledgements
 
-The authors thank the Leverhulme Trust for funding through the Leverhulme Research Centre for Functional Materials Design (RC-2015-036).
+The authors thank the Leverhulme Trust for funding and Dr. Elena Patyukova for her contribution to the work via the Leverhulme Research Centre for Functional Materials Design (RC-2015-036).
 
-## Citation
-
-```
-@article{patyukova2024disorder,
-  title={Classification and statistical analysis of structural disorder in crystalline materials},
-  author={Patyukova, Elena and Collins, Chris M. and Dyer, Matthew S. and Antypov, Dmytro and Claridge, John B. and Rosseinsky, Matthew J.},
-  year={2024}
-}
-```
 
 
